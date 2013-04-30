@@ -44,6 +44,7 @@ class TFIDF(object):
         x = self.TOKEN_RE.findall(x)
         return x, len(x)
 
+    # if either of the next two functions ever error out, use the "better to break something and apologise" methodology
     def term_freq(self, word, document, all_documents):
         maximum_occurances = document.freq_map_max
         # if not maximum_occurances:
@@ -68,10 +69,10 @@ class TFIDF(object):
         all_documents = []
         for document in files:
             document = os.path.join(directory, document)
-            identifier = document
-            content = open(document).read()
+            with open(document) as fh:
+                content = fh.read()
 
-            n_doc = self.Document(content, identifier=identifier)
+            n_doc = Document(content, identifier=document)
             all_documents.append(n_doc)
 
         logging.debug('Ended after {} seconds'.format(time.time() - start))
