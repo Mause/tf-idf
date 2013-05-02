@@ -70,20 +70,20 @@ class TFIDF(object):
         logging.debug('Computing the word relevancy values started at {}'.format(start))
 
         # compute the index
-        i_d_v_cache = {}
+        i_d_f_cache = {}
         len_all_document = len(all_documents)
         for document in all_documents:
-            self.index[document.identifier] = {
-                "metadata": {},
-                "words": {}
-            }
-
             for word in document.tokens:
-                if word not in i_d_v_cache:
-                    i_d_v_cache[word] = self.inverse_document_freq(word, all_documents, len_all_document)
+                # assert word not in self.index, self.index[word]
+                if word not in self.index:
+                    self.index[word] = {}
 
-                self.index[document.identifier]["words"][word] = (
-                    self.term_freq(word, document, all_documents) * i_d_v_cache[word]
+                if word not in i_d_f_cache:
+                    i_d_f_cache[word] = self.inverse_document_freq(word, all_documents, len_all_document)
+
+                assert document.identifier not in self.index[word]
+                self.index[word][document.identifier] = (
+                    self.term_freq(word, document, all_documents) * i_d_f_cache[word]
                 )
 
         logging.debug('Ended after {} seconds'.format(time.time() - start))
@@ -97,10 +97,7 @@ class TFIDF(object):
 
         words = [x.lower() for x in query.split()]
 
-        words = [
-            word
-            for word in words
-            if word not in stopwords]
+        words = self.filter_out_stopwords(words)
 
         # this implementation does not place emphasis on words
         # that appear more than once in the query string
@@ -110,10 +107,12 @@ class TFIDF(object):
 
         # <3 default dict
         scores = defaultdict(lambda: {"score": 0})
-        for page in self.index:
-            for word in words:
-                if word in self.index[page]["words"]:
-                    scores[page]["score"] += self.index[page]["words"][word]
+        for word in words:
+            if word in self.index:
+                for document in self.index[word]:
+                    scores[document]["score"] += self.index[word][document]
+            else:
+                logging.warning('word not in index; {}'.format(word))
 
         logging.debug('Relevant documents; {}'.format(len(scores)))
         scores = sorted(
@@ -122,12 +121,12 @@ class TFIDF(object):
         return scores
 
     def mould_metadata(self):
-        all_words = chain.from_iterable(
-            [x['words'].keys() for x in self.index.values()])
-        all_words = set(all_words)
-        self.index_metadata.update({
-            'uniq_words': len(all_words)
-        })
+        # all_words = chain.from_iterable(
+        #     [x['words'].keys() for x in self.index.values()])
+        # all_words = set(all_words)
+        # self.index_metadata.update({
+        #     'uniq_words': len(all_words)
+        # })
         return self.index_metadata
 
     def load_index(self):
@@ -144,3 +143,6 @@ class TFIDF(object):
         #     "metadata": dict
         # }
         raise NotImplementedError()
+
+    def filter_out_stopwords(self, words):
+        return [word for word in words if word not in stopwords]
