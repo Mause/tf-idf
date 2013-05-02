@@ -5,7 +5,8 @@ logging.debug = print
 logging.warning = print
 
 from tfidf.core import TFIDF
-from tfidf.mixins import DirectorySource, JSON_Storage
+from tfidf.mixins.storage import JSON_Storage
+from tfidf.mixins.source import DirectorySource
 
 
 class TFIDF_JSON_FROM_DIRECTORY(DirectorySource, JSON_Storage, TFIDF):
