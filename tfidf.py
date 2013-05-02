@@ -10,39 +10,45 @@
 
 # stdlib imports
 import re
-import os
 import math
 import json
 import time
 import logging
-from collections import Counter
+from itertools import chain
+from collections import Counter, defaultdict
+
+TOKEN_RE = re.compile(r"\w+", flags=re.UNICODE)
+
+with open('stopwords.json') as fh:
+    stopwords = set(json.load(fh))
 
 
 class Document(object):
-    def __init__(self, raw, identifier, tokenizer):
+    def __init__(self, content, identifier, metadata):
         self.identifier = identifier
 
-        self.tokens, self.num_tokens = tokenizer(raw)
-        self.tokens = list(filter(lambda x: x not in self.stopwords, self.tokens))
+        self.tokens, self.num_tokens = self.tokenize(content)
+        self.tokens = list(filter(lambda x: x not in stopwords, self.tokens))
 
         self.freq_map = Counter(self.tokens)
         self.freq_map_max = max(self.freq_map.values())
 
         self.tokens = set(self.tokens)
 
-
-class TFIDF(object):
-    def __init__(self):
-        with open('stopwords.json') as fh:
-            self.stopwords = set(json.load(fh))
-
-        self.TOKEN_RE = re.compile(r"\w+", flags=re.UNICODE)
-        self.index = {}
-
     def tokenize(self, x):
         x = x.lower()
-        x = self.TOKEN_RE.findall(x)
+        x = TOKEN_RE.findall(x)
         return x, len(x)
+
+
+class TFIDF(object):
+    # this kind of has to be here
+    index_loaded = False
+
+    def __init__(self, **kwargs):
+        if not self.index_loaded:
+            self.index = {}
+            self.index_metadata = {}
 
     # if either of the next two functions ever error out, use the "better to break something and apologise" methodology
     def term_freq(self, word, document, all_documents):
@@ -57,22 +63,18 @@ class TFIDF(object):
         #     return 1
         return math.log(len_all_document / instances_in_all)
 
-    def build_index(self, directory, num=None):
-        files = list(os.listdir(directory))
-        files = files[:num] if num else files
-        logging.info('Indexing {} items'.format(len(files)))
-
+    def build_index(self, num=None):
         start = time.time()
         logging.debug('Reading in and tokenising the documents started at {}'.format(start))
 
         # load in the documents
         all_documents = []
-        for document in files:
-            document = os.path.join(directory, document)
-            with open(document) as fh:
-                content = fh.read()
-
-            n_doc = Document(content, identifier=document)
+        for data in self.documents(num):
+            data
+            n_doc = Document(
+                content=data["content"],
+                identifier=data["identifier"],
+                metadata={})
             all_documents.append(n_doc)
 
         logging.debug('Ended after {} seconds'.format(time.time() - start))
@@ -84,13 +86,74 @@ class TFIDF(object):
         i_d_v_cache = {}
         len_all_document = len(all_documents)
         for document in all_documents:
-            self.index[document.identifier] = {}
+            self.index[document.identifier] = {
+                "metadata": {},
+                "words": {}
+            }
+
             for word in document.tokens:
                 if word not in i_d_v_cache:
                     i_d_v_cache[word] = self.inverse_document_freq(word, all_documents, len_all_document)
 
-                value = self.term_freq(word, document, all_documents) * i_d_v_cache[word]
-
-                self.index[document.identifier][word] = value
+                self.index[document.identifier]["words"][word] = (
+                    self.term_freq(word, document, all_documents) * i_d_v_cache[word]
+                )
 
         logging.debug('Ended after {} seconds'.format(time.time() - start))
+        self.index_loaded = True
+
+    def search(self, query):
+        if not self.index_loaded:
+            self.build_index()
+
+        logging.debug('Docs; {}'.format(len(self.index)))
+
+        words = [x.lower() for x in query.split()]
+
+        words = [
+            word
+            for word in words
+            if word not in stopwords]
+
+        # this implementation does not place emphasis on words
+        # that appear more than once in the query string
+        words = set(words)
+
+        logging.debug('Querying with; {}'.format(words))
+
+        # <3 default dict
+        scores = defaultdict(lambda: {"score": 0})
+        for page in self.index:
+            for word in words:
+                if word in self.index[page]["words"]:
+                    scores[page]["score"] += self.index[page]["words"][word]
+
+        logging.debug('Relevant documents; {}'.format(len(scores)))
+        scores = sorted(
+            scores.items(), key=lambda x: x[1]["score"], reverse=True)
+
+        return scores
+
+    def mould_metadata(self):
+        all_words = chain.from_iterable(
+            [x['words'].keys() for x in self.index.values()])
+        all_words = set(all_words)
+        self.index_metadata.update({
+            'uniq_words': len(all_words)
+        })
+        return self.index_metadata
+
+    def load_index(self):
+        raise NotImplementedError()
+
+    def save_index(self):
+        raise NotImplementedError()
+
+    def documents(self):
+        # must return dictionary, in format;
+        # {
+        #     "identifier": str,
+        #     "content": str,
+        #     "metadata": dict
+        # }
+        raise NotImplementedError()

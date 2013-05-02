@@ -1,9 +1,7 @@
 import os
+import sys
 import json
 import logging
-from itertools import chain
-from collections import defaultdict
-
 from tfidf import TFIDF
 
 
@@ -12,72 +10,82 @@ logging.debug = print
 logging.warning = print
 
 
-class TFIDF_JSON(TFIDF):
-    def __init__(self, filename):
-        self.filename = filename
-        self.index = None
-        self.load_index()
-        return super(TFIDF_JSON, self).__init__()
+class DIRECTORY_SOURCE(object):
+    def __init__(self, **kwargs):
+        self.directory = kwargs['directory']
+        return super(DIRECTORY_SOURCE, self).__init__(**kwargs)
+
+    def documents(self, num=None):
+        files = os.listdir(self.directory)
+
+        files = (filename for filename in files if not filename == '.git')
+        files = list(files[:num] if num else files)
+        logging.info('Going to index {} items'.format(len(files)))
+
+        for filename in files:
+            filename = os.path.join(self.directory, filename)
+            with open(filename) as fh:
+                content = fh.read()
+
+            yield {
+                "identifier": filename,
+                "content": content,
+                "metadata": {}
+            }
+
+
+class JSON_STORAGE(object):
+    def __init__(self, **kwargs):
+        self.filename = kwargs['index']
+
+        return super(JSON_STORAGE, self).__init__(**kwargs)
 
     def load_index(self):
         if not os.path.exists(self.filename):
             return {}
         # read in the index, if it is cached
         with open(self.filename) as fh:
-            self.index = json.load(fh)
+            data = json.load(fh)
+        self.index = data['index']
+        self.index_metadata = data['metadata']
+        self.index_loaded = True
 
     def save_index(self):
+        assert self.index_loaded
+
+        data = {
+            "index": self.index,
+            "metadata": self.mould_metadata()
+        }
         with open(self.filename, 'w') as fh:
-            json.dump(self.index, fh, indent=4)
+            json.dump(data, fh, indent=4)
 
-    def search(self, query):
-        if not self.index:
-            self.build_index()
-        logging.debug('Docs; {}'.format(len(self.index)))
 
-        words = [x.lower() for x in query.split()]
-
-        words = [
-            word
-            for word in words
-            if word not in self.stopwords]
-
-        logging.debug('Query with ; {}'.format(words))
-
-        all_words = [x.keys() for x in self.index.values()]
-        all_words = chain.from_iterable(all_words)
-        all_words = set(all_words)
-        all_words = list(all_words)
-
-        logging.debug('Unique indexed words; {}'.format(len(all_words)))
-
-        scores = defaultdict(float)
-        for page in self.index:
-            for word in words:
-                if word in self.index[page]:
-                    scores[page] += self.index[page][word]
-
-        logging.debug('Relevant documents; {}'.format(len(scores)))
-        scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-
-        return scores
+class TFIDF_JSON_FROM_DIRECTORY(DIRECTORY_SOURCE, JSON_STORAGE, TFIDF):
+    pass
 
 
 def main(filename):
-    search_engine = TFIDF_JSON(filename)
-    import sys
+    directory = sys.argv[1] if sys.argv[1:] else None
+    search_engine = TFIDF_JSON_FROM_DIRECTORY(
+        index=filename, directory=directory)
     if len(sys.argv) > 1:
-        search_engine.build_index(sys.argv[1], num=None)
+        search_engine.build_index()
+        print('Index built. Saving index')
         search_engine.save_index()
+        print('Saved')
     else:
+        print('Loading index')
         search_engine.load_index()
+        print('Index loaded')
 
+    limit = 10
     # do the search function
     results = search_engine.search(input('Q? '))
-    print()
+    print('Displaying top {} results'.format(limit))
 
-    for result in results:
-        print(result[0], '-->', result[1])
+    for order, result in enumerate(results[:limit]):
+        print('{}. {} --> {}'.format(order, result[0], result[1]))
 
 
 if __name__ == '__main__':
