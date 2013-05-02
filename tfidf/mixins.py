@@ -1,21 +1,19 @@
 import os
-import sys
 import json
 import logging
-from tfidf import TFIDF
 
 
-logging.info = print
-logging.debug = print
-logging.warning = print
-
-
-class DIRECTORY_SOURCE(object):
+class DirectorySource(object):
+    """
+    takes the directory argument to the class
+    and traverses it, yielding appropriate dictionaries
+    """
     def __init__(self, **kwargs):
         self.directory = kwargs['directory']
-        return super(DIRECTORY_SOURCE, self).__init__(**kwargs)
+        return super(DirectorySource, self).__init__()
 
     def documents(self, num=None):
+        assert self.directory, 'did you pass a valid directory argument to the constructor?'
         files = os.listdir(self.directory)
 
         files = (filename for filename in files if not filename == '.git')
@@ -34,15 +32,16 @@ class DIRECTORY_SOURCE(object):
             }
 
 
-class JSON_STORAGE(object):
+class JSON_Storage(object):
     def __init__(self, **kwargs):
         self.filename = kwargs['index']
 
-        return super(JSON_STORAGE, self).__init__(**kwargs)
+        return super(JSON_Storage, self).__init__(**kwargs)
 
     def load_index(self):
         if not os.path.exists(self.filename):
             return {}
+
         # read in the index, if it is cached
         with open(self.filename) as fh:
             data = json.load(fh)
@@ -59,34 +58,3 @@ class JSON_STORAGE(object):
         }
         with open(self.filename, 'w') as fh:
             json.dump(data, fh, indent=4)
-
-
-class TFIDF_JSON_FROM_DIRECTORY(DIRECTORY_SOURCE, JSON_STORAGE, TFIDF):
-    pass
-
-
-def main(filename):
-    directory = sys.argv[1] if sys.argv[1:] else None
-    search_engine = TFIDF_JSON_FROM_DIRECTORY(
-        index=filename, directory=directory)
-    if len(sys.argv) > 1:
-        search_engine.build_index()
-        print('Index built. Saving index')
-        search_engine.save_index()
-        print('Saved')
-    else:
-        print('Loading index')
-        search_engine.load_index()
-        print('Index loaded')
-
-    limit = 10
-    # do the search function
-    results = search_engine.search(input('Q? '))
-    print('Displaying top {} results'.format(limit))
-
-    for order, result in enumerate(results[:limit]):
-        print('{}. {} --> {}'.format(order, result[0], result[1]))
-
-
-if __name__ == '__main__':
-    main('index.json')

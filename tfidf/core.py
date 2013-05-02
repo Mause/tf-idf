@@ -1,13 +1,3 @@
-#  File: search.py
-#  Project: Forking Stories
-#  Component: Search engine
-#
-#  Authors:    Dominic May;
-#              Lord_DeathMatch;
-#              Mause
-#
-#  Description: uses the tf-idf algorithm to search the stories
-
 # stdlib imports
 import re
 import math
