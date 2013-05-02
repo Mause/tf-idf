@@ -5,7 +5,15 @@ import json
 from . import MixinSettings
 
 
-class JSON_Storage(MixinSettings):
+class Storage(MixinSettings):
+    def load_index(self):
+        raise NotImplementedError()
+
+    def save_index(self):
+        raise NotImplementedError()
+
+
+class JSON_Storage(Storage):
     def load_index(self):
         self.assert_has_arg('filename')
         if not os.path.exists(self.settings['filename']):

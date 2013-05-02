@@ -4,7 +4,12 @@ import logging
 from . import MixinSettings
 
 
-class DirectorySource(MixinSettings):
+class Source(MixinSettings):
+    def documents(self, num=None):
+        raise NotImplementedError()
+
+
+class DirectorySource(Source):
     """
     takes the directory argument to the class
     and traverses it, yielding appropriate dictionaries
