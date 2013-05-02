@@ -1,8 +1,7 @@
 import sys
-import logging
-logging.info = print
-logging.debug = print
-logging.warning = print
+# import logging
+# logging.info = print
+# logging.debug = print
 
 from tfidf.core import TFIDF
 from tfidf.mixins.storage import JSON_Storage
@@ -30,10 +29,19 @@ def main(filename):
     limit = 10
     # do the search function
     results = search_engine.search(input('Q? '))
-    print('Displaying top {} results'.format(limit))
 
-    for order, result in enumerate(results[:limit]):
-        print('{}. {} --> {}'.format(order, result[0], result[1]))
+    keys_to_display = list(results.keys())[:limit]
+    offset = max(map(len, keys_to_display))
+
+    print()
+    if results:
+        print('Displaying top {} results'.format(limit))
+
+        for key in keys_to_display:
+            result = results[key]
+            print('{} --> {}'.format(key.ljust(offset), result['score']))
+    else:
+        print('No results')
 
 
 if __name__ == '__main__':

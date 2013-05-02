@@ -5,8 +5,8 @@ import math
 import json
 import time
 import logging
-# from itertools import chain
-from collections import Counter, defaultdict
+from itertools import chain
+from collections import Counter, defaultdict, OrderedDict
 
 TOKEN_RE = re.compile(r"\w+", flags=re.UNICODE)
 
@@ -26,10 +26,10 @@ class Document(object):
 
         self.tokens = set(self.tokens)
 
-    def tokenize(self, x):
-        x = x.lower()
-        x = TOKEN_RE.findall(x)
-        return x, len(x)
+    def tokenize(self, string):
+        string = string.lower()
+        string = TOKEN_RE.findall(string)
+        return string, len(string)
 
 
 class TFIDF(object):
@@ -116,16 +116,16 @@ class TFIDF(object):
         logging.debug('Relevant documents; {}'.format(len(scores)))
         scores = sorted(
             scores.items(), key=lambda x: x[1]["score"], reverse=True)
+        scores = OrderedDict(scores)
 
         return scores
 
     def mould_metadata(self):
-        # all_words = chain.from_iterable(
-        #     [x['words'].keys() for x in self.index.values()])
-        # all_words = set(all_words)
-        # self.index_metadata.update({
-        #     'uniq_words': len(all_words)
-        # })
+        all_words = self.index.keys()
+        all_words = set(all_words)
+        self.index_metadata.update({
+            'uniq_words': len(all_words)
+        })
         return self.index_metadata
 
     def load_index(self):
