@@ -34,11 +34,8 @@ class Document(object):
 class TFIDF(object):
     # this kind of has to be here
     index_loaded = False
-
-    def __init__(self, **kwargs):
-        if not self.index_loaded:
-            self.index = {}
-            self.index_metadata = {}
+    index = {}
+    index_metadata = {}
 
     # if either of the next two functions ever error out, use the "better to break something and apologise" methodology
     def term_freq(self, word, document, all_documents):
