@@ -1,15 +1,16 @@
 # stdlib imports
 import re
+import os
 import math
 import json
 import time
 import logging
-from itertools import chain
+# from itertools import chain
 from collections import Counter, defaultdict
 
 TOKEN_RE = re.compile(r"\w+", flags=re.UNICODE)
 
-with open('stopwords.json') as fh:
+with open(os.path.join(os.path.dirname(__file__), 'stopwords.json')) as fh:
     stopwords = set(json.load(fh))
 
 
@@ -32,9 +33,8 @@ class Document(object):
 
 
 class TFIDF(object):
-    # this kind of has to be here
     index_loaded = False
-    index = {}
+    index = defaultdict(dict)
     index_metadata = {}
 
     # if either of the next two functions ever error out, use the "better to break something and apologise" methodology
@@ -74,9 +74,8 @@ class TFIDF(object):
         len_all_document = len(all_documents)
         for document in all_documents:
             for word in document.tokens:
-                # assert word not in self.index, self.index[word]
-                if word not in self.index:
-                    self.index[word] = {}
+                # if word not in self.index:
+                #     self.index[word] = {}
 
                 if word not in i_d_f_cache:
                     i_d_f_cache[word] = self.inverse_document_freq(word, all_documents, len_all_document)
