@@ -118,6 +118,21 @@ class TFIDF(MixinSettings):
         logging.debug('Ended after {} seconds'.format(time.time() - start))
         self.index_loaded = True
 
+    def normalise_search_results(self, words, results):
+        "aims to promote results that contain more of the specified keywords"
+        for result in results:
+            if results[result]['words_contained'] != words:
+                diff = words - results[result]['words_contained']
+                # print(len(words), len(diff), len(diff) / len(words))
+                diff = len(diff) / len(words)
+                results[result]['original'] = results[result]['score']
+                results[result]['score'] *= diff
+                results[result]['diff'] = diff
+            else:
+                results[result]['diff'] = 1.0
+                results[result]['original'] = None
+        return results
+
     def word_scores_from_index(self):
         # <3 dictionary comprehension
         return {word: sum(self.index[word].values()) for word in self.index}
@@ -148,6 +163,8 @@ class TFIDF(MixinSettings):
                     scores[document]["words_contained"].add(word)
             else:
                 words_not_found.add(word)
+
+        scores = self.normalise_search_results(words, scores)
 
         if words_not_found:
             logging.warning(' words not in index; {}'.format(words_not_found))

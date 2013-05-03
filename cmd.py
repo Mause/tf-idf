@@ -31,11 +31,10 @@ def setup(filename):
         logging.info('Saved. Size on disk is {:.2f}MB'.format(
             os.stat(filename).st_size / 1024 / 1024))
     else:
-        logging.info('Loading index, with size of {:.2f}MB')
-        engine.load_index()
-        logging.info('Index loaded. {} words in index'.format(
-            len(engine.index),
+        logging.info('Loading index, with size of {:.2f}MB'.format(
             os.stat(filename).st_size / 1024 / 1024))
+        engine.load_index()
+        logging.info('Index loaded. {} words in index'.format(len(engine.index)))
 
     assert engine.index_loaded
 
@@ -43,12 +42,12 @@ def setup(filename):
 
 
 def do_search(engine):
-    limit = 10
-    # do the search function
+    limit = 100
+    # do the search
     results = engine.search(input('Q? '))
 
     keys_to_display = list(results.keys())[:limit]
-    offset = max(map(len, keys_to_display))
+    offset = max(map(len, [key.split('\\')[-1] for key in keys_to_display]))
 
     print()
     if results:
@@ -56,10 +55,12 @@ def do_search(engine):
 
         for key in keys_to_display:
             result = results[key]
-            print('{} == {} --> {}'.format(
-                key.ljust(offset),
+            print('{} == {} --> {} --> {} --> {}'.format(
+                key.split('\\')[-1].ljust(offset),
                 str(result['score']).ljust(18),
-                result['words_contained']))
+                result['words_contained'],
+                result['diff'],
+                result['original']))
     else:
         print('No results')
 
