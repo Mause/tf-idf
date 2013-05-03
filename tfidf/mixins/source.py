@@ -24,14 +24,16 @@ class DirectorySource(Source):
 
         for filename in files:
             filename = os.path.join(self.settings['directory'], filename)
-            with open(filename) as fh:
-                content = fh.read()
-
-            yield {
-                "identifier": filename,
-                "content": content,
-                "metadata": {}
-            }
+            if not os.path.isdir(filename):
+                with open(filename) as fh:
+                    content = fh.read()
+                if content:
+                    # we dont want empty documents :P
+                    yield {
+                        "identifier": filename,
+                        "content": content,
+                        "metadata": {}
+                    }
 
 
 class WebsiteSource(MixinSettings):

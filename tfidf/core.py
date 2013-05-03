@@ -5,8 +5,11 @@ import math
 import json
 import time
 import logging
-from itertools import chain
-from collections import Counter, defaultdict, OrderedDict
+from collections import (
+    Counter,
+    defaultdict,
+    OrderedDict
+)
 
 TOKEN_RE = re.compile(r"\w+", flags=re.UNICODE)
 
@@ -17,19 +20,26 @@ with open(os.path.join(os.path.dirname(__file__), 'stopwords.json')) as fh:
 class Document(object):
     def __init__(self, content, identifier, metadata):
         self.identifier = identifier
+        self.metadata = metadata
 
         self.tokens, self.num_tokens = self.tokenize(content)
-        self.tokens = list(filter(lambda x: x not in stopwords, self.tokens))
+        self.raw_tokens = list(filter(lambda x: x not in stopwords, self.tokens))
 
-        self.freq_map = Counter(self.tokens)
+        self.freq_map = Counter(self.raw_tokens)
         self.freq_map_max = max(self.freq_map.values())
 
-        self.tokens = set(self.tokens)
+        self.tokens = set(self.raw_tokens)
 
     def tokenize(self, string):
         string = string.lower()
         string = TOKEN_RE.findall(string)
         return string, len(string)
+
+    def __repr__(self):
+        return '<Document identifier="{}" metadata="{}" tokens="{}">'.format(
+            self.identifier,
+            self.metadata,
+            self.tokens)
 
 
 class TFIDF(object):
@@ -39,54 +49,74 @@ class TFIDF(object):
 
     # if either of the next two functions ever error out, use the "better to break something and apologise" methodology
     def term_freq(self, word, document, all_documents):
-        maximum_occurances = document.freq_map_max
-        # if not maximum_occurances:
-        #     return document.freq_map[word]
+        # the word with the most occurrences in the document does not depend on the current word;
+        # so, we store it as a constant on the Document :D
+        maximum_occurances = 0.5 + document.freq_map_max
+
         return document.freq_map[word] / float(maximum_occurances)
 
     def inverse_document_freq(self, word, all_documents, len_all_document):
-        instances_in_all = len([1 for document in all_documents if word in document.tokens])
-        # if not instances_in_all:
-        #     return 1
-        return math.log(len_all_document / instances_in_all)
+        # instances_in_all = len([
+        #     document.freq_map[word]
+        #     for document in all_documents
+        #     if word in document.raw_tokens
+        # ])
 
-    def build_index(self, num=None):
+        instances_in_all = len([
+            1
+            for document in all_documents
+            if word in document.tokens
+        ])
+
+        # as stated on Wikipedia, if the document does not exist in any documents,
+        # instances_in_all will be zero, causing a ZeroDivisionError.
+        # 1 is hence added to ensure this does not occur
+        instances_in_all += 1
+
+        return math.log(len_all_document / float(instances_in_all))
+
+    def process_documents(self, num=None):
         start = time.time()
-        logging.debug('Reading in and tokenising the documents started at {}'.format(start))
+        logging.debug('Reading and tokenizing the documents started at {}'.format(start))
 
         # load in the documents
         all_documents = []
         for data in self.documents(num):
-            data
             n_doc = Document(
                 content=data["content"],
                 identifier=data["identifier"],
                 metadata={})
+
             all_documents.append(n_doc)
 
         logging.debug('Ended after {} seconds'.format(time.time() - start))
+
+        return all_documents
+
+    def build_index(self, num=None):
+        all_documents = self.process_documents(num)
+        len_all_document = len(all_documents)
 
         start = time.time()
         logging.debug('Computing the word relevancy values started at {}'.format(start))
 
         # compute the index
         i_d_f_cache = {}
-        len_all_document = len(all_documents)
         for document in all_documents:
             for word in document.tokens:
-                # if word not in self.index:
-                #     self.index[word] = {}
-
                 if word not in i_d_f_cache:
                     i_d_f_cache[word] = self.inverse_document_freq(word, all_documents, len_all_document)
 
-                assert document.identifier not in self.index[word]
                 self.index[word][document.identifier] = (
                     self.term_freq(word, document, all_documents) * i_d_f_cache[word]
                 )
 
         logging.debug('Ended after {} seconds'.format(time.time() - start))
         self.index_loaded = True
+
+    def word_scores_from_index(self):
+        # <3 dictionary comprehension
+        return {word: sum(self.index[word].values()) for word in self.index}
 
     def search(self, query):
         if not self.index_loaded:
@@ -104,15 +134,18 @@ class TFIDF(object):
 
         logging.debug('Querying with; {}'.format(words))
 
+        words_not_found = set()
         # <3 default dict
-        scores = defaultdict(lambda: {"score": 0})
+        scores = defaultdict(lambda: {"score": 0, "words_contained": set()})
         for word in words:
             if word in self.index:
                 for document in self.index[word]:
                     scores[document]["score"] += self.index[word][document]
+                    scores[document]["words_contained"].add(word)
             else:
-                logging.warning('word not in index; {}'.format(word))
+                words_not_found.add(word)
 
+        logging.warning(' words not in index; {}'.format(words_not_found))
         logging.debug('Relevant documents; {}'.format(len(scores)))
         scores = sorted(
             scores.items(), key=lambda x: x[1]["score"], reverse=True)
@@ -128,6 +161,32 @@ class TFIDF(object):
         })
         return self.index_metadata
 
+    def filter_out_stopwords(self, words):
+        return [word for word in words if word not in stopwords]
+
+    def determine_keywords(self, string='hello world'):
+        "lower scores are sorta better; less common, hence more informative"
+
+        from tfidf.core import Document
+        tokens = Document(
+            content=string,
+            identifier=None,
+            metadata=None).tokens
+
+        from collections import OrderedDict
+
+        word_scores = self.word_scores_from_index()
+
+        scores = {
+            word: word_scores[word] if word in word_scores else 0
+            for word in tokens
+        }
+
+        scores = sorted(scores.items(), key=lambda x: x[1])
+        scores = OrderedDict(scores)
+
+        return scores
+
     def load_index(self):
         raise NotImplementedError()
 
@@ -142,6 +201,3 @@ class TFIDF(object):
         #     "metadata": dict
         # }
         raise NotImplementedError()
-
-    def filter_out_stopwords(self, words):
-        return [word for word in words if word not in stopwords]
