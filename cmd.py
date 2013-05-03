@@ -28,12 +28,12 @@ def setup(filename):
         engine.build_index()
         logging.info('Index built. Saving index')
         engine.save_index()
-        logging.info('Saved. Size on disk is {}MB'.format(
+        logging.info('Saved. Size on disk is {:.2f}MB'.format(
             os.stat(filename).st_size / 1024 / 1024))
     else:
-        logging.info('Loading index')
+        logging.info('Loading index, with size of {:.2f}MB')
         engine.load_index()
-        logging.info('Index loaded. {} words, {:.2f}MB in size'.format(
+        logging.info('Index loaded. {} words in index'.format(
             len(engine.index),
             os.stat(filename).st_size / 1024 / 1024))
 

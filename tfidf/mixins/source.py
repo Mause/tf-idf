@@ -27,6 +27,7 @@ class DirectorySource(Source):
             if not os.path.isdir(filename):
                 with open(filename) as fh:
                     content = fh.read()
+
                 if content:
                     # we dont want empty documents :P
                     yield {

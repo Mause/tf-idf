@@ -11,6 +11,8 @@ from collections import (
     OrderedDict
 )
 
+from .mixins import MixinSettings
+
 TOKEN_RE = re.compile(r"\w+", flags=re.UNICODE)
 
 with open(os.path.join(os.path.dirname(__file__), 'stopwords.json')) as fh:
@@ -42,26 +44,27 @@ class Document(object):
             self.tokens)
 
 
-class TFIDF(object):
+class TFIDF(MixinSettings):
     index_loaded = False
     index = defaultdict(dict)
     index_metadata = {}
+
+    @property
+    def enforce_correct(self):
+        return 'enforce_correct' in self.settings and self.settings['enforce_corrent']
 
     # if either of the next two functions ever error out, use the "better to break something and apologise" methodology
     def term_freq(self, word, document, all_documents):
         # the word with the most occurrences in the document does not depend on the current word;
         # so, we store it as a constant on the Document :D
-        maximum_occurances = 0.5 + document.freq_map_max
+        maximum_occurances = document.freq_map_max
+
+        if self.enforce_correct:
+            maximum_occurances += 0.5
 
         return document.freq_map[word] / float(maximum_occurances)
 
     def inverse_document_freq(self, word, all_documents, len_all_document):
-        # instances_in_all = len([
-        #     document.freq_map[word]
-        #     for document in all_documents
-        #     if word in document.raw_tokens
-        # ])
-
         instances_in_all = len([
             1
             for document in all_documents
@@ -71,7 +74,8 @@ class TFIDF(object):
         # as stated on Wikipedia, if the document does not exist in any documents,
         # instances_in_all will be zero, causing a ZeroDivisionError.
         # 1 is hence added to ensure this does not occur
-        instances_in_all += 1
+        if self.enforce_correct:
+            instances_in_all += 1
 
         return math.log(len_all_document / float(instances_in_all))
 
@@ -145,7 +149,8 @@ class TFIDF(object):
             else:
                 words_not_found.add(word)
 
-        logging.warning(' words not in index; {}'.format(words_not_found))
+        if words_not_found:
+            logging.warning(' words not in index; {}'.format(words_not_found))
         logging.debug('Relevant documents; {}'.format(len(scores)))
         scores = sorted(
             scores.items(), key=lambda x: x[1]["score"], reverse=True)
@@ -162,7 +167,7 @@ class TFIDF(object):
         return self.index_metadata
 
     def filter_out_stopwords(self, words):
-        return [word for word in words if word not in stopwords]
+        return filter(lambda word: word not in stopwords, words)
 
     def determine_keywords(self, string='hello world'):
         "lower scores are sorta better; less common, hence more informative"
