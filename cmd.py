@@ -1,33 +1,48 @@
 import os
 import sys
+import time
 import logging
 logging.info = print
 logging.debug = print
 
 from tfidf.core import TFIDF
-from tfidf.mixins.storage import JSON_Storage
 from tfidf.mixins.source import DirectorySource
+from tfidf.mixins.sink import DatabaseSink, JSON_Sink
 
 
-class TFIDF_JSON_FROM_DIRECTORY(DirectorySource, JSON_Storage, TFIDF):
+class TFIDF_JSON_FROM_DIRECTORY(DirectorySource, JSON_Sink, TFIDF):
     pass
+
+
+class TFIDF_DB_FROM_DIRECTORY(DirectorySource, DatabaseSink, TFIDF):
+    pass
+
+
+TFIDF = TFIDF_DB_FROM_DIRECTORY or TFIDF_JSON_FROM_DIRECTORY
 
 
 def setup(filename):
     directory = sys.argv[1] if sys.argv[1:] else None
     engine = TFIDF_JSON_FROM_DIRECTORY(
-        filename=filename, directory=directory)
+        filename=filename,
+        directory=directory,
+        database_file='db.db')
     if len(sys.argv) > 1:
         engine.build_index()
         logging.info('Index built. Saving index')
+        t = time.time()
         engine.save_index()
-        logging.info('Saved. Size on disk is {:.2f}MB'.format(
+        logging.info('Saved. Took {} seconds. Size on disk is {:.2f}MB'.format(
+            time.time() - t,
             os.stat(filename).st_size / 1024 / 1024))
     else:
         logging.info('Loading index, with size of {:.2f}MB'.format(
             os.stat(filename).st_size / 1024 / 1024))
+        t = time.time()
         engine.load_index()
-        logging.info('Index loaded. {} words in index'.format(len(engine.index)))
+        logging.info('Index loaded, took {} seconds. {} words in index'.format(
+            time.time() - t,
+            len(engine.index)))
 
     assert engine.index_loaded, 'wut?!'
 
@@ -43,27 +58,28 @@ def do_keyword(engine):
 
 
 def do_search(engine):
-    limit = 100
+    limit = 50
     doc = input('\nQ? ')
 
     # do the search
     results = engine.search(doc)
 
-    keys_to_display = list(results.keys())[:limit]
-    offset = max(map(len, [key.split('\\')[-1] for key in keys_to_display]))
-
     print()
+
     if results:
+        keys_to_display = list(results.keys())[:limit]
+        offset = max(map(len, [key.split('\\')[-1] for key in keys_to_display]))
         print('Displaying top {} results'.format(limit))
 
         for key in keys_to_display:
             result = results[key]
-            print('{} == {} --> {} --> {} --> {}'.format(
+            print('{} == {:.5f} --> {:.5f} --> {:.2f} --> {}'.format(
                 key.split('\\')[-1].ljust(offset),
-                str(result['score']).ljust(18),
-                result['words_contained'],
+                result['score'],
+                result['original'],
                 result['diff'],
-                result['original']))
+                result['words_contained']
+            ))
     else:
         print('No results')
 

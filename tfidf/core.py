@@ -19,7 +19,7 @@ with open(os.path.join(os.path.dirname(__file__), 'stopwords.json')) as fh:
     stopwords = set(json.load(fh))
 
 
-def tokenize(self, string):
+def tokenize(string):
     string = string.lower()
     string = TOKEN_RE.findall(string)
     return string, len(string)
@@ -139,7 +139,7 @@ class TFIDF(MixinSettings):
                 results[result]['diff'] = diff
             else:
                 results[result]['diff'] = 1.0
-                results[result]['original'] = None
+                results[result]['original'] = results[result]['score']
         return results
 
     def word_scores_from_index(self):

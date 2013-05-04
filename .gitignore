@@ -37,3 +37,4 @@ nosetests.xml
 
 # application specific
 index.json
+*.db
