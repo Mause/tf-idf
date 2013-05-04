@@ -13,13 +13,6 @@ class TFIDF_JSON_FROM_DIRECTORY(DirectorySource, JSON_Storage, TFIDF):
     pass
 
 
-def do_keyword(engine):
-    doc = input()
-    scores = engine.determine_keywords(doc)
-    for score in scores:
-        print(' *', score, scores[score])
-
-
 def setup(filename):
     directory = sys.argv[1] if sys.argv[1:] else None
     engine = TFIDF_JSON_FROM_DIRECTORY(
@@ -36,15 +29,25 @@ def setup(filename):
         engine.load_index()
         logging.info('Index loaded. {} words in index'.format(len(engine.index)))
 
-    assert engine.index_loaded
+    assert engine.index_loaded, 'wut?!'
 
     return engine
 
 
+def do_keyword(engine):
+    doc = input('\n> ')
+    scores = engine.determine_keywords(doc)
+    offset = max(map(len, scores.keys())) + 2
+    for score in scores:
+        print(' *', score.ljust(offset), scores[score])
+
+
 def do_search(engine):
     limit = 100
+    doc = input('\nQ? ')
+
     # do the search
-    results = engine.search(input('Q? '))
+    results = engine.search(doc)
 
     keys_to_display = list(results.keys())[:limit]
     offset = max(map(len, [key.split('\\')[-1] for key in keys_to_display]))
@@ -67,4 +70,5 @@ def do_search(engine):
 
 if __name__ == '__main__':
     engine = setup('index.json')
+    # do_keyword(engine)
     do_search(engine)

@@ -13,29 +13,30 @@ from collections import (
 
 from .mixins import MixinSettings
 
-TOKEN_RE = re.compile(r"\w+", flags=re.UNICODE)
 
+TOKEN_RE = re.compile(r"\w+", flags=re.UNICODE)
 with open(os.path.join(os.path.dirname(__file__), 'stopwords.json')) as fh:
     stopwords = set(json.load(fh))
 
 
+def tokenize(self, string):
+    string = string.lower()
+    string = TOKEN_RE.findall(string)
+    return string, len(string)
+
+
 class Document(object):
     def __init__(self, content, identifier, metadata):
-        self.identifier = identifier
         self.metadata = metadata
+        self.identifier = identifier
 
-        self.tokens, self.num_tokens = self.tokenize(content)
+        self.tokens, self.num_tokens = tokenize(content)
         self.raw_tokens = list(filter(lambda x: x not in stopwords, self.tokens))
 
         self.freq_map = Counter(self.raw_tokens)
         self.freq_map_max = max(self.freq_map.values())
 
         self.tokens = set(self.raw_tokens)
-
-    def tokenize(self, string):
-        string = string.lower()
-        string = TOKEN_RE.findall(string)
-        return string, len(string)
 
     def __repr__(self):
         return '<Document identifier="{}" metadata="{}" tokens="{}">'.format(
@@ -80,6 +81,10 @@ class TFIDF(MixinSettings):
         return math.log(len_all_document / float(instances_in_all))
 
     def process_documents(self, num=None):
+        """
+        calls the self.documents function, and iterates over it,
+        returning a list of Document instances
+        """
         start = time.time()
         logging.debug('Reading and tokenizing the documents started at {}'.format(start))
 
@@ -89,7 +94,7 @@ class TFIDF(MixinSettings):
             n_doc = Document(
                 content=data["content"],
                 identifier=data["identifier"],
-                metadata={})
+                metadata=data['metadata'] if 'metadata' in data else {})
 
             all_documents.append(n_doc)
 
@@ -98,6 +103,10 @@ class TFIDF(MixinSettings):
         return all_documents
 
     def build_index(self, num=None):
+        """
+        computes tfidf for document and terms.
+        assigns the resulting index to self.index
+        """
         all_documents = self.process_documents(num)
         len_all_document = len(all_documents)
 
@@ -123,8 +132,8 @@ class TFIDF(MixinSettings):
         for result in results:
             if results[result]['words_contained'] != words:
                 diff = words - results[result]['words_contained']
-                # print(len(words), len(diff), len(diff) / len(words))
                 diff = len(diff) / len(words)
+
                 results[result]['original'] = results[result]['score']
                 results[result]['score'] *= diff
                 results[result]['diff'] = diff
@@ -134,6 +143,12 @@ class TFIDF(MixinSettings):
         return results
 
     def word_scores_from_index(self):
+        """
+        more or less flattens the index,
+        so that absolute values for words can be easily accessed
+
+        returns a dictionary
+        """
         # <3 dictionary comprehension
         return {word: sum(self.index[word].values()) for word in self.index}
 
@@ -153,9 +168,9 @@ class TFIDF(MixinSettings):
 
         logging.debug('Querying with; {}'.format(words))
 
-        words_not_found = set()
         # <3 default dict
         scores = defaultdict(lambda: {"score": 0, "words_contained": set()})
+        words_not_found = set()
         for word in words:
             if word in self.index:
                 for document in self.index[word]:
@@ -169,34 +184,30 @@ class TFIDF(MixinSettings):
         if words_not_found:
             logging.warning(' words not in index; {}'.format(words_not_found))
         logging.debug('Relevant documents; {}'.format(len(scores)))
+
         scores = sorted(
-            scores.items(), key=lambda x: x[1]["score"], reverse=True)
+            scores.items(),
+            key=lambda x: x[1]["score"],
+            reverse=True)
         scores = OrderedDict(scores)
 
         return scores
 
     def mould_metadata(self):
+        "atm, simple grabs the number of words in the index"
         all_words = self.index.keys()
         all_words = set(all_words)
-        self.index_metadata.update({
-            'uniq_words': len(all_words)
-        })
+        self.index_metadata['uniq_words'] = len(all_words)
         return self.index_metadata
 
     def filter_out_stopwords(self, words):
+        "returns a filter instance configured to generate "
         return filter(lambda word: word not in stopwords, words)
 
-    def determine_keywords(self, string='hello world'):
+    def determine_keywords(self, string):
         "lower scores are sorta better; less common, hence more informative"
 
-        from tfidf.core import Document
-        tokens = Document(
-            content=string,
-            identifier=None,
-            metadata=None).tokens
-
-        from collections import OrderedDict
-
+        tokens = tokenize(string)
         word_scores = self.word_scores_from_index()
 
         scores = {
@@ -209,17 +220,26 @@ class TFIDF(MixinSettings):
 
         return scores
 
+    def __repr__(self):
+        return '<{} {}>'.format(
+            self.__class__.__name__,
+            self.settings)
+
     def load_index(self):
-        raise NotImplementedError()
+        "does not return anything, simply loads index into self.index"
+        raise NotImplementedError('Must be implemented in subclass')
 
     def save_index(self):
-        raise NotImplementedError()
+        "does not require arguments, simple saves index from self.index"
+        raise NotImplementedError('Must be implemented in subclass')
 
     def documents(self):
-        # must return dictionary, in format;
-        # {
-        #     "identifier": str,
-        #     "content": str,
-        #     "metadata": dict
-        # }
-        raise NotImplementedError()
+        """
+        must return dictionary, in format;
+        {
+            "identifier": str,
+            "content": str,
+            "metadata": dict
+        }
+        """
+        raise NotImplementedError('Must be implemented in subclass')

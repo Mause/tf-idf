@@ -37,9 +37,9 @@ class DirectorySource(Source):
                     }
 
 
-class WebsiteSource(MixinSettings):
-    """
-    takes url argument and traverses
-    """
-    def documents(self, num=None):
-        self.assert_has_arg('url')
+# class WebsiteSource(MixinSettings):
+#     """
+#     takes url argument and traverses
+#     """
+#     def documents(self, num=None):
+#         self.assert_has_arg('url')
