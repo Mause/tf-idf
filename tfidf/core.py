@@ -10,11 +10,12 @@ from collections import (
     defaultdict,
     OrderedDict
 )
+from itertools import chain
 
 from .mixins import MixinSettings
 
 
-TOKEN_RE = re.compile(r"\w+", flags=re.UNICODE)
+TOKEN_RE = re.compile(r"[\w'`]+", flags=re.UNICODE)
 with open(os.path.join(os.path.dirname(__file__), 'stopwords.json')) as fh:
     stopwords = set(json.load(fh))
 
@@ -65,12 +66,14 @@ class TFIDF(MixinSettings):
 
         return document.freq_map[word] / float(maximum_occurances)
 
-    def inverse_document_freq(self, word, all_documents, len_all_document):
-        instances_in_all = len([
-            1
-            for document in all_documents
-            if word in document.tokens
-        ])
+    def inverse_document_freq(self, word, all_documents, len_all_document, idf_ref):
+        # omg so simple yet so efficient
+        instances_in_all = idf_ref[word]
+        # instances_in_all = len([
+        #     1
+        #     for document in all_documents
+        #     if word in document.tokens
+        # ])
 
         # as stated on Wikipedia, if the document does not exist in any documents,
         # instances_in_all will be zero, causing a ZeroDivisionError.
@@ -102,6 +105,10 @@ class TFIDF(MixinSettings):
 
         return all_documents
 
+    def build_idf_reference(self, all_documents):
+        tokens = chain.from_iterable(document.tokens for document in all_documents)
+        return Counter(tokens)
+
     def build_index(self, num=None):
         """
         computes tfidf for document and terms.
@@ -109,6 +116,9 @@ class TFIDF(MixinSettings):
         """
         all_documents = self.process_documents(num)
         len_all_document = len(all_documents)
+
+        logging.debug('Building reference table')
+        idf_ref = self.build_idf_reference(all_documents)
 
         start = time.time()
         logging.debug('Computing the word relevancy values started at {}'.format(start))
@@ -118,7 +128,9 @@ class TFIDF(MixinSettings):
         for document in all_documents:
             for word in document.tokens:
                 if word not in i_d_f_cache:
-                    i_d_f_cache[word] = self.inverse_document_freq(word, all_documents, len_all_document)
+                    i_d_f_cache[word] = self.inverse_document_freq(
+                        word, all_documents,
+                        len_all_document, idf_ref)
 
                 self.index[word][document.identifier] = (
                     self.term_freq(word, document, all_documents) * i_d_f_cache[word]
