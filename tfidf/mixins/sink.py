@@ -1,7 +1,12 @@
 import os
 import json
+import sqlite3
 
 from . import MixinSettings
+
+from collections import defaultdict
+
+_types = ['db', 'json']
 
 
 class Sink(MixinSettings):
@@ -14,12 +19,14 @@ class Sink(MixinSettings):
 
 class JSON_Sink(Sink):
     def load_index(self):
-        self.assert_has_arg('filename')
-        if not os.path.exists(self.settings['filename']):
+        self.assert_has_arg('index_filename')
+        index_filename = self.settings['index_filename']
+
+        if not os.path.exists(index_filename):
             return {}
 
         # read in the index, if it is cached
-        with open(self.settings['filename']) as fh:
+        with open(index_filename) as fh:
             data = json.load(fh)
         self.index = data['index']
         self.index_metadata = data['metadata']
@@ -27,17 +34,14 @@ class JSON_Sink(Sink):
 
     def save_index(self):
         assert self.index_loaded
-        self.assert_has_arg('filename')
+        self.assert_has_arg('index_filename')
 
         data = {
             "index": self.index,
             "metadata": self.mould_metadata()
         }
-        with open(self.settings['filename'], 'w') as fh:
+        with open(self.settings['index_filename'], 'w') as fh:
             json.dump(data, fh, indent=4)
-
-
-from collections import defaultdict
 
 
 class SearchIndex(object):
@@ -75,29 +79,27 @@ class SearchIndex(object):
         index_models = [SearchIndex(*q) for q in all_m]
         return index_models
 
+    @classmethod
+    def insert(cls, to_insert: dict, conn):
+        # jsonify appropriately
+        to_insert = [
+            (key, json.dumps(value))
+            for key, value in to_insert.items()
+        ]
 
-def insert(to_insert: dict, conn):
-    # jsonify appropriately
-    to_insert = [
-        (key, json.dumps(value))
-        for key, value in to_insert.items()
-    ]
-
-    cursor = conn.cursor()
-    cursor.executemany(
-        'INSERT INTO SearchIndex VALUES (?, ?)',
-        to_insert)
-    conn.commit()
-
-import sqlite3
+        cursor = conn.cursor()
+        cursor.executemany(
+            'INSERT INTO SearchIndex VALUES (?, ?)',
+            to_insert)
+        conn.commit()
 
 
 class DatabaseSink(Sink):
     def _setup_sqlite(self):
-        self.assert_has_arg('database_file')
-        database_file = self.settings['database_file']
+        self.assert_has_arg('database_filename')
+        database_filename = self.settings['database_filename']
 
-        self.conn = sqlite3.connect(database_file)
+        self.conn = sqlite3.connect(database_filename)
         self.create_table(if_exists=False)
 
     def __del__(self):
@@ -129,4 +131,4 @@ class DatabaseSink(Sink):
 
     def save_index(self):
         assert self.index_loaded
-        insert(self.index, self.conn)
+        SearchIndex.insert(self.index, self.conn)
