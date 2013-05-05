@@ -1,3 +1,5 @@
+"core functionality"
+
 # stdlib imports
 import re
 import os
@@ -55,8 +57,8 @@ class TFIDF(MixinSettings):
     def enforce_correct(self):
         return 'enforce_correct' in self.settings and self.settings['enforce_corrent']
 
-    # if either of the next two functions ever error out, use the "better to break something and apologise" methodology
     def term_freq(self, word, document, all_documents):
+        "calculates the term frequency for a word"
         # the word with the most occurrences in the document does not depend on the current word;
         # so, we store it as a constant on the Document :D
         maximum_occurances = document.freq_map_max
@@ -67,13 +69,8 @@ class TFIDF(MixinSettings):
         return document.freq_map[word] / float(maximum_occurances)
 
     def inverse_document_freq(self, word, all_documents, len_all_document, idf_ref):
-        # omg so simple yet so efficient
+        "calculates idf for given word with given document stats"
         instances_in_all = idf_ref[word]
-        # instances_in_all = len([
-        #     1
-        #     for document in all_documents
-        #     if word in document.tokens
-        # ])
 
         # as stated on Wikipedia, if the document does not exist in any documents,
         # instances_in_all will be zero, causing a ZeroDivisionError.
@@ -85,7 +82,7 @@ class TFIDF(MixinSettings):
 
     def process_documents(self, num=None):
         """
-        calls the self.documents function, and iterates over it,
+        calls the self.documents() function, and iterates over it,
         returning a list of Document instances
         """
         start = time.time()
@@ -105,14 +102,20 @@ class TFIDF(MixinSettings):
 
         return all_documents
 
-    def build_idf_reference(self, all_documents):
+    def build_idf_reference(self, all_documents: Document):
+        """
+        takes the tokens from all the documents,
+        and feeds them into itertools.chain.from_iterable.
+        this produces a single list, which is passed into a
+        collections.Counter instance, returning a dictionary
+        """
         tokens = chain.from_iterable(document.tokens for document in all_documents)
         return Counter(tokens)
 
     def build_index(self, num=None):
         """
         computes tfidf for document and terms.
-        assigns the resulting index to self.index
+        assigns the resulting index to `self.index`
         """
         all_documents = self.process_documents(num)
         len_all_document = len(all_documents)
@@ -139,7 +142,7 @@ class TFIDF(MixinSettings):
         logging.debug('Ended after {} seconds'.format(time.time() - start))
         self.index_loaded = True
 
-    def normalise_search_results(self, words, results):
+    def normalise_search_results(self, words: list, results: dict):
         "aims to promote results that contain more of the specified keywords"
         for result in results:
             if results[result]['words_contained'] != words:
@@ -158,13 +161,12 @@ class TFIDF(MixinSettings):
         """
         more or less flattens the index,
         so that absolute values for words can be easily accessed
-
-        returns a dictionary
         """
         # <3 dictionary comprehension
         return {word: sum(self.index[word].values()) for word in self.index}
 
-    def search(self, query):
+    def search(self, query: str):
+        "uses the index to find document relating to the query"
         if not self.index_loaded:
             self.build_index()
 
@@ -212,11 +214,11 @@ class TFIDF(MixinSettings):
         self.index_metadata['uniq_words'] = len(all_words)
         return self.index_metadata
 
-    def filter_out_stopwords(self, words):
-        "returns a filter instance configured to generate "
+    def filter_out_stopwords(self, words: list):
+        "returns a filter instance configured to generate words, minus the stopwords"
         return filter(lambda word: word not in stopwords, words)
 
-    def determine_keywords(self, string):
+    def determine_keywords(self, string: str):
         "lower scores are sorta better; less common, hence more informative"
 
         tokens = tokenize(string)
@@ -247,7 +249,7 @@ class TFIDF(MixinSettings):
 
     def documents(self):
         """
-        must return dictionary, in format;
+        must be implemented by subclass, and return dictionary as follows;
         {
             "identifier": str,
             "content": str,
