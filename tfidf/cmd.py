@@ -4,10 +4,10 @@ logging.info = print
 logging.debug = print
 
 from .core import TFIDF
-from .mixins.source import DirectorySource
+from .ext.source import DirectorySource
 
-from .mixins.sink import _types as sink_types
-from .mixins.sink import JSON_Sink, DatabaseSink
+from .ext.sink import _types as sink_types
+from .ext.sink import JSON_Sink, DatabaseSink
 
 
 def setup(settings):
