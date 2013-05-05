@@ -34,7 +34,7 @@ def setup(settings):
             time.time() - t,
             len(engine.index)))
 
-    if hasattr(engine, 'index_size'):
+    if hasattr(engine, 'index_size') and engine.index_size:
         logging.info('Size of index on disk is {:.2f}MB'.format(engine.index_size))
 
     assert engine.index_loaded, 'Subclass for sink has an implementation error'

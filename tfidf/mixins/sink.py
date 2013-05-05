@@ -143,6 +143,6 @@ class DatabaseSink(Sink):
 
         self.tfidf_object.index_loaded = True
 
-    def save_index(self, tfidf_object):
+    def save_index(self):
         assert self.tfidf_object.index_loaded
         SearchIndex.insert(self.tfidf_object.index, self.conn)

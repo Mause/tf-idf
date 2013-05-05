@@ -269,7 +269,7 @@ class TFIDF(object):
         assert hasattr(self, 'sink'), 'No sink has been provided'
 
         if self.sink:
-            self.sink.load_index(self)
+            self.sink.load_index()
 
     def save_index(self):
         """
@@ -278,7 +278,7 @@ class TFIDF(object):
         assert hasattr(self, 'sink'), 'No sink has been provided'
 
         if self.sink:
-            self.sink.save_index(self)
+            self.sink.save_index()
 
     def documents(self, num=None):
         """
@@ -292,4 +292,4 @@ class TFIDF(object):
         assert hasattr(self, 'source'), 'No source has been provided'
 
         if self.source:
-            return self.source.documents(self, num)
+            return self.source.documents(num)
