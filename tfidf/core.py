@@ -104,10 +104,8 @@ class TFIDF(MixinSettings):
 
     def build_idf_reference(self, all_documents: Document):
         """
-        takes the tokens from all the documents,
-        and feeds them into itertools.chain.from_iterable.
-        this produces a single list, which is passed into a
-        collections.Counter instance, returning a dictionary
+        returns a collections.Counter() instance
+        recording how many documents contain a given term
         """
         tokens = chain.from_iterable(document.tokens for document in all_documents)
         return Counter(tokens)
