@@ -22,10 +22,8 @@ class TFIDF_DB_FROM_DIRECTORY(DirectorySource, DatabaseSink, TFIDF):
 def setup(settings):
     if settings['index_type'].lower() == 'db':
         TFIDF = TFIDF_DB_FROM_DIRECTORY
-        proper_filename = settings['database_filename']
     elif settings['index_type'].lower() == 'json':
         TFIDF = TFIDF_JSON_FROM_DIRECTORY
-        proper_filename = settings['index_filename']
     else:
         raise Exception('Invalid sink type; "{}"'.format(settings['index_type'].lower()))
     engine = TFIDF(**settings)
@@ -44,8 +42,8 @@ def setup(settings):
             time.time() - t,
             len(engine.index)))
 
-    logging.info('Size of index on disk is {:.2f}MB'.format(
-        os.stat(proper_filename).st_size / 1024 / 1024))
+    if hasattr(engine, 'index_size'):
+        logging.info('Size of index on disk is {:.2f}MB'.format(engine.index_size))
 
     assert engine.index_loaded, 'Subclass for sink has an implementation error'
 

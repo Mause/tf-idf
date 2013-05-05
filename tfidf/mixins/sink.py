@@ -10,6 +10,12 @@ _types = ['db', 'json']
 
 
 class Sink(MixinSettings):
+    def filesize(self, filename):
+        bytes = os.stat(filename).st_size
+        kilobytes = bytes / 1024
+        megabytes = kilobytes / 1024
+        return megabytes
+
     def load_index(self):
         raise NotImplementedError()
 
@@ -20,7 +26,8 @@ class Sink(MixinSettings):
 class JSON_Sink(Sink):
     def load_index(self):
         self.assert_has_arg('index_filename')
-        index_filename = self.settings['index_filename']
+        index_filename = os.path.abspath(self.settings['index_filename'])
+        self.index_size = self.filesize(index_filename)
 
         if not os.path.exists(index_filename):
             return {}
@@ -97,7 +104,8 @@ class SearchIndex(object):
 class DatabaseSink(Sink):
     def _setup_sqlite(self):
         self.assert_has_arg('database_filename')
-        database_filename = self.settings['database_filename']
+        database_filename = os.path.abspath(self.settings['database_filename'])
+        self.index_size = self.filesize(database_filename)
 
         self.conn = sqlite3.connect(database_filename)
         self.create_table(if_exists=False)

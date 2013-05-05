@@ -26,7 +26,7 @@ class Document(object):
         self.metadata = metadata
         self.identifier = identifier
 
-        self.tokens, self.num_tokens = tokenize(content)
+        self.tokens, _ = tokenize(content)
         self.raw_tokens = list(filter(lambda x: x not in stopwords, self.tokens))
 
         self.freq_map = Counter(self.raw_tokens)
@@ -206,17 +206,21 @@ class TFIDF(MixinSettings):
                 diff = words - results[result]['words_contained']
                 diff = len(diff) / len(words)
 
-                results[result]['original'] = results[result]['score']
+                results[result].update({
+                    'original': results[result]['score'],
+                    'diff': diff
+                })
 
                 # make sure that we are actually reducing the damn score
                 if results[result]['original'] >= 1:
                     results[result]['score'] /= diff
                 else:
                     results[result]['score'] *= diff
-                results[result]['diff'] = diff
             else:
-                results[result]['diff'] = 1.0
-                results[result]['original'] = results[result]['score']
+                results[result].update({
+                    'diff': 1.0,
+                    'original': results[result]['score']
+                })
         return results
 
     def mould_metadata(self):
