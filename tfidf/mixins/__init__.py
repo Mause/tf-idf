@@ -2,8 +2,6 @@ import types
 
 
 class MixinSettings(object):
-    start_functions = []
-
     def __init__(self, **kwargs):
         self.settings = kwargs
 

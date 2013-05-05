@@ -1,5 +1,4 @@
 import os
-import sys
 import time
 import logging
 logging.info = print
@@ -19,15 +18,17 @@ class TFIDF_DB_FROM_DIRECTORY(DirectorySource, tfidf.mixins.sink.DatabaseSink, T
 
 
 def setup(settings):
-    if settings['index_type'] == 'db':
+    if settings['index_type'].lower() == 'db':
         TFIDF = TFIDF_DB_FROM_DIRECTORY
         proper_filename = settings['database_filename']
-    elif settings['index_type'] == 'json':
+    elif settings['index_type'].lower() == 'json':
         TFIDF = TFIDF_JSON_FROM_DIRECTORY
         proper_filename = settings['index_filename']
+    else:
+        raise Exception('Invalid sink type; "{}"'.format(settings['index_type'].lower()))
     engine = TFIDF(**settings)
 
-    if len(sys.argv) > 1:
+    if settings['directory']:
         engine.build_index()
         logging.info('Index built. Saving index')
         t = time.time()

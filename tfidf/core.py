@@ -154,7 +154,11 @@ class TFIDF(MixinSettings):
                 diff = len(diff) / len(words)
 
                 results[result]['original'] = results[result]['score']
-                results[result]['score'] *= diff
+                # make sure that we are actually reducing the damn score
+                if results[result]['original'] >= 1:
+                    results[result]['score'] *= diff
+                else:
+                    results[result]['score'] /= diff
                 results[result]['diff'] = diff
             else:
                 results[result]['diff'] = 1.0
