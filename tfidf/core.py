@@ -142,29 +142,6 @@ class TFIDF(MixinSettings):
         logging.debug('Ended after {} seconds'.format(time.time() - start))
         self.index_loaded = True
 
-    def normalise_search_results(self, words: list, results: dict):
-        """
-        aims to promote results that contain more of the specified keywords
-
-        whether or not it achieves this is debatable, but comments are welcome
-        """
-        for result in results:
-            if results[result]['words_contained'] != words:
-                diff = words - results[result]['words_contained']
-                diff = len(diff) / len(words)
-
-                results[result]['original'] = results[result]['score']
-                # make sure that we are actually reducing the damn score
-                if results[result]['original'] >= 1:
-                    results[result]['score'] *= diff
-                else:
-                    results[result]['score'] /= diff
-                results[result]['diff'] = diff
-            else:
-                results[result]['diff'] = 1.0
-                results[result]['original'] = results[result]['score']
-        return results
-
     def word_scores_from_index(self):
         """
         sums all the scores for a particular word,
@@ -205,19 +182,42 @@ class TFIDF(MixinSettings):
             else:
                 words_not_found.add(word)
 
-        scores = self.normalise_search_results(words, scores)
-
         if words_not_found:
             logging.warning(' words not in index; {}'.format(words_not_found))
         logging.debug('Relevant documents; {}'.format(len(scores)))
+
+        scores = self.normalise_search_results(words, scores)
 
         scores = sorted(
             scores.items(),
             key=lambda x: x[1]["score"],
             reverse=True)
-        scores = OrderedDict(scores)
 
         return scores
+
+    def normalise_search_results(self, words: list, results: dict):
+        """
+        aims to promote results that contain more of the specified keywords
+
+        whether or not it achieves this is debatable, but comments are welcome
+        """
+        for result in results:
+            if results[result]['words_contained'] != words:
+                diff = words - results[result]['words_contained']
+                diff = len(diff) / len(words)
+
+                results[result]['original'] = results[result]['score']
+
+                # make sure that we are actually reducing the damn score
+                if results[result]['original'] >= 1:
+                    results[result]['score'] /= diff
+                else:
+                    results[result]['score'] *= diff
+                results[result]['diff'] = diff
+            else:
+                results[result]['diff'] = 1.0
+                results[result]['original'] = results[result]['score']
+        return results
 
     def mould_metadata(self):
         "atm, simple grabs the number of words in the index"

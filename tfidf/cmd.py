@@ -4,16 +4,18 @@ import logging
 logging.info = print
 logging.debug = print
 
-import tfidf.mixins.sink
-from tfidf.core import TFIDF
-from tfidf.mixins.source import DirectorySource
+from .core import TFIDF
+from .mixins.source import DirectorySource
+
+from .mixins.sink import _types as sink_types
+from .mixins.sink import JSON_Sink, DatabaseSink
 
 
-class TFIDF_JSON_FROM_DIRECTORY(DirectorySource, tfidf.mixins.sink.JSON_Sink, TFIDF):
+class TFIDF_JSON_FROM_DIRECTORY(DirectorySource, JSON_Sink, TFIDF):
     pass
 
 
-class TFIDF_DB_FROM_DIRECTORY(DirectorySource, tfidf.mixins.sink.DatabaseSink, TFIDF):
+class TFIDF_DB_FROM_DIRECTORY(DirectorySource, DatabaseSink, TFIDF):
     pass
 
 
@@ -45,7 +47,7 @@ def setup(settings):
     logging.info('Size of index on disk is {:.2f}MB'.format(
         os.stat(proper_filename).st_size / 1024 / 1024))
 
-    assert engine.index_loaded, 'wut?!'
+    assert engine.index_loaded, 'Subclass for sink has an implementation error'
 
     return engine
 
@@ -68,14 +70,14 @@ def do_search(engine):
     print()
 
     if results:
-        keys_to_display = list(results.keys())[:limit]
-        offset = max(map(len, [key.split('\\')[-1] for key in keys_to_display]))
+        results_to_display = results[:limit]
+        offset = max(map(len, [key[0].split('\\')[-1] for key in results_to_display]))
         print('Displaying top {} results'.format(limit))
 
-        for key in keys_to_display:
-            result = results[key]
+        for key in results_to_display:
+            result = key[1]
             print('{} == {:.5f} --> {:.5f} --> {:.2f} --> {}'.format(
-                key.split('\\')[-1].ljust(offset),
+                key[0].split('\\')[-1].ljust(offset),
                 result['score'],
                 result['original'],
                 result['diff'],
@@ -89,7 +91,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-d', '--directory', help='Directory to index. If not provided, uses prebuilt index', required=False)
-    parser.add_argument('index_type', help='Method use to store index', choices=tfidf.mixins.sink._types)
+    parser.add_argument('index_type', help='Method use to store index', choices=sink_types)
     args = vars(parser.parse_args())
 
     directory = args.get('directory', None)
