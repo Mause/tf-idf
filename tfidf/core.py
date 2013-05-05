@@ -14,7 +14,6 @@ from collections import (
 from itertools import chain
 
 from .utils import tokenize
-from .mixins import MixinSettings
 
 with open(os.path.join(os.path.dirname(__file__), 'stopwords.json')) as fh:
     stopwords = set(json.load(fh))
@@ -41,23 +40,27 @@ class Document(object):
             self.tokens)
 
 
-class TFIDF(MixinSettings):
+class TFIDF(object):
     "An implementation of TFIDF"
 
-    # these can't be assigned in a __init__ method, cause it would overwrite the one MixinSettings
-    index_loaded = False
-    index = defaultdict(dict)
-    index_metadata = {}
+    def __init__(
+            self, index=None, index_metadata=None, sink=None,
+            source=None, enforce_correct=False, **kwargs):
+        # these can't be assigned in a __init__ method, cause it would overwrite the one MixinSettings
+        self.index_loaded = True if index else False
+        self.index = index or defaultdict(dict)
+        self.index_metadata = index_metadata or {}
+        self.enforce_correct = enforce_correct
 
-    @property
-    def enforce_correct(self):
-        """
-        some modifications can be made in the algorithm to make it more reliable,
-        these are disabled by default
+        # assert sink or source, 'either a sink or a source must be provided'
+        if sink:
+            # TODO: work out how to determine if a class has been instantiated
+            # assert type(sink) != type
+            self.sink = sink(self, **kwargs) if type(sink) == type else sink
 
-        enable them by passing enforce_correct=True to the constructor
-        """
-        return 'enforce_correct' in self.settings and self.settings['enforce_corrent']
+        if source:
+            # assert type(sink) != type
+            self.source = source(self, **kwargs) if type(source) == type else source
 
     def term_freq(self, word, document, all_documents):
         "calculates the term frequency for a word"
@@ -262,20 +265,22 @@ class TFIDF(MixinSettings):
     def load_index(self):
         """
         must not return anything, must simply loads index into self.index
-
-        must be implemented by subclass
         """
-        raise NotImplementedError('Must be implemented in subclass')
+        assert hasattr(self, 'sink'), 'No sink has been provided'
+
+        if self.sink:
+            self.sink.load_index(self)
 
     def save_index(self):
         """
         does not require arguments, simple saves index from self.index
-
-        must be implemented by subclass
         """
-        raise NotImplementedError('Must be implemented in subclass')
+        assert hasattr(self, 'sink'), 'No sink has been provided'
 
-    def documents(self):
+        if self.sink:
+            self.sink.save_index(self)
+
+    def documents(self, num=None):
         """
         must return an iterable yielding dictionaries as follows;
         {
@@ -283,7 +288,8 @@ class TFIDF(MixinSettings):
             "content": str,
             "metadata": dict
         }
-
-        must be implemented by subclass
         """
-        raise NotImplementedError('Must be implemented in subclass')
+        assert hasattr(self, 'source'), 'No source has been provided'
+
+        if self.source:
+            return self.source.documents(self, num)

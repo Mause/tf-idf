@@ -10,21 +10,14 @@ from .mixins.sink import _types as sink_types
 from .mixins.sink import JSON_Sink, DatabaseSink
 
 
-class TFIDF_JSON_FROM_DIRECTORY(DirectorySource, JSON_Sink, TFIDF):
-    pass
-
-
-class TFIDF_DB_FROM_DIRECTORY(DirectorySource, DatabaseSink, TFIDF):
-    pass
-
-
 def setup(settings):
-    if settings['index_type'].lower() == 'db':
-        TFIDF = TFIDF_DB_FROM_DIRECTORY
-    elif settings['index_type'].lower() == 'json':
-        TFIDF = TFIDF_JSON_FROM_DIRECTORY
-    else:
-        raise Exception('Invalid sink type; "{}"'.format(settings['index_type'].lower()))
+    if settings['index_type'] == 'db':
+        settings['sink'] = DatabaseSink
+    elif settings['index_type'] == 'json':
+        settings['sink'] = JSON_Sink
+
+    settings['source'] = DirectorySource
+
     engine = TFIDF(**settings)
 
     if settings['directory'] is not None:

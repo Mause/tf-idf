@@ -14,7 +14,7 @@ class DirectorySource(Source):
     takes the directory argument to the class
     and traverses it, yielding appropriate dictionaries
     """
-    def documents(self, num=None):
+    def documents(self, tfidf_object, num=None):
         self.assert_has_arg('directory')
         files = os.listdir(self.settings['directory'])
 

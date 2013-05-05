@@ -2,8 +2,9 @@ import types
 
 
 class MixinSettings(object):
-    def __init__(self, **kwargs):
+    def __init__(self, tfidf_object, **kwargs):
         self.settings = kwargs
+        self.tfidf_object = tfidf_object
 
         functions = [
             getattr(self, attr) for attr in dir(self)
