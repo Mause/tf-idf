@@ -201,6 +201,8 @@ class TFIDF(MixinSettings):
 
         whether or not it achieves this is debatable, but comments are welcome
         """
+        from copy import copy
+        results = copy(results)
         for result in results:
             if results[result]['words_contained'] != words:
                 diff = words - results[result]['words_contained']
@@ -212,10 +214,10 @@ class TFIDF(MixinSettings):
                 })
 
                 # make sure that we are actually reducing the damn score
-                if results[result]['original'] >= 1:
-                    results[result]['score'] /= diff
-                else:
+                if results[result]['score'] >= 1:
                     results[result]['score'] *= diff
+                else:
+                    results[result]['score'] /= diff
             else:
                 results[result].update({
                     'diff': 1.0,

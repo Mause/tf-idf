@@ -27,16 +27,19 @@ class JSON_Sink(Sink):
     def load_index(self):
         self.assert_has_arg('index_filename')
         index_filename = os.path.abspath(self.settings['index_filename'])
-        self.index_size = self.filesize(index_filename)
 
-        if not os.path.exists(index_filename):
-            return {}
+        if os.path.exists(index_filename):
+            self.index_size = self.filesize(index_filename)
 
-        # read in the index, if it is cached
-        with open(index_filename) as fh:
-            data = json.load(fh)
-        self.index = data['index']
-        self.index_metadata = data['metadata']
+            # read in the index, if it is cached
+            with open(index_filename) as fh:
+                data = json.load(fh)
+
+            self.index = data['index']
+            self.index_metadata = data['metadata']
+        else:
+            # if the index does not yet exist
+            self.index = {}
         self.index_loaded = True
 
     def save_index(self):

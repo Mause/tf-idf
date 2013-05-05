@@ -1,4 +1,3 @@
-import os
 import time
 import logging
 logging.info = print
@@ -28,7 +27,7 @@ def setup(settings):
         raise Exception('Invalid sink type; "{}"'.format(settings['index_type'].lower()))
     engine = TFIDF(**settings)
 
-    if settings['directory']:
+    if settings['directory'] is not None:
         engine.build_index()
         logging.info('Index built. Saving index')
         t = time.time()
@@ -76,8 +75,8 @@ def do_search(engine):
             result = key[1]
             print('{} == {:.5f} --> {:.5f} --> {:.2f} --> {}'.format(
                 key[0].split('\\')[-1].ljust(offset),
-                result['score'],
                 result['original'],
+                result['score'],
                 result['diff'],
                 result['words_contained']
             ))
@@ -85,18 +84,22 @@ def do_search(engine):
         print('No results')
 
 
-if __name__ == '__main__':
+def main():
     import argparse
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-d', '--directory', help='Directory to index. If not provided, uses prebuilt index', required=False)
     parser.add_argument('index_type', help='Method use to store index', choices=sink_types)
     args = vars(parser.parse_args())
 
-    directory = args.get('directory', None)
     args.update({
         "index_filename": 'index.json',
         "database_filename": 'db.db'
     })
+
     engine = setup(args)
     # do_keyword(engine)
     do_search(engine)
+
+
+if __name__ == '__main__':
+    main()
