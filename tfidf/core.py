@@ -1,7 +1,6 @@
 "core functionality"
 
 # stdlib imports
-import re
 import os
 import math
 import json
@@ -14,18 +13,11 @@ from collections import (
 )
 from itertools import chain
 
+from .utils import tokenize
 from .mixins import MixinSettings
 
-
-TOKEN_RE = re.compile(r"[\w'`]+", flags=re.UNICODE)
 with open(os.path.join(os.path.dirname(__file__), 'stopwords.json')) as fh:
     stopwords = set(json.load(fh))
-
-
-def tokenize(string):
-    string = string.lower()
-    string = TOKEN_RE.findall(string)
-    return string, len(string)
 
 
 class Document(object):
