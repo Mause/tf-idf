@@ -29,6 +29,7 @@ def tokenize(string):
 
 
 class Document(object):
+    "a container object for properties of a given document"
     def __init__(self, content, identifier, metadata):
         self.metadata = metadata
         self.identifier = identifier
@@ -49,12 +50,21 @@ class Document(object):
 
 
 class TFIDF(MixinSettings):
+    "An implementation of TFIDF"
+
+    # these can't be assigned in a __init__ method, cause it would overwrite the one MixinSettings
     index_loaded = False
     index = defaultdict(dict)
     index_metadata = {}
 
     @property
     def enforce_correct(self):
+        """
+        some modifications can be made in the algorithm to make it more reliable,
+        these are disabled by default
+
+        enable them by passing enforce_correct=True to the constructor
+        """
         return 'enforce_correct' in self.settings and self.settings['enforce_corrent']
 
     def term_freq(self, word, document, all_documents):
@@ -113,7 +123,7 @@ class TFIDF(MixinSettings):
     def build_index(self, num=None):
         """
         computes tfidf for document and terms.
-        assigns the resulting index to `self.index`
+        assigns the resulting index to self.index
         """
         all_documents = self.process_documents(num)
         len_all_document = len(all_documents)
@@ -141,7 +151,11 @@ class TFIDF(MixinSettings):
         self.index_loaded = True
 
     def normalise_search_results(self, words: list, results: dict):
-        "aims to promote results that contain more of the specified keywords"
+        """
+        aims to promote results that contain more of the specified keywords
+
+        whether or not it achieves this is debatable, but comments are welcome
+        """
         for result in results:
             if results[result]['words_contained'] != words:
                 diff = words - results[result]['words_contained']
@@ -157,14 +171,18 @@ class TFIDF(MixinSettings):
 
     def word_scores_from_index(self):
         """
-        more or less flattens the index,
-        so that absolute values for words can be easily accessed
+        sums all the scores for a particular word,
+        and assigns it to a dictionary, with the word as the key
         """
         # <3 dictionary comprehension
         return {word: sum(self.index[word].values()) for word in self.index}
 
     def search(self, query: str):
-        "uses the index to find document relating to the query"
+        """
+        uses the index to find documents relating to the query
+
+        returns a collections.OrderedDict() sorted by score
+        """
         if not self.index_loaded:
             self.build_index()
 
@@ -217,7 +235,9 @@ class TFIDF(MixinSettings):
         return filter(lambda word: word not in stopwords, words)
 
     def determine_keywords(self, string: str):
-        "lower scores are sorta better; less common, hence more informative"
+        """
+        lower scores are sorta better; less common in the index, hence presumed to be more informative
+        """
 
         tokens = tokenize(string)
         word_scores = self.word_scores_from_index()
@@ -238,20 +258,30 @@ class TFIDF(MixinSettings):
             self.settings)
 
     def load_index(self):
-        "does not return anything, simply loads index into self.index"
+        """
+        must not return anything, must simply loads index into self.index
+
+        must be implemented by subclass
+        """
         raise NotImplementedError('Must be implemented in subclass')
 
     def save_index(self):
-        "does not require arguments, simple saves index from self.index"
+        """
+        does not require arguments, simple saves index from self.index
+
+        must be implemented by subclass
+        """
         raise NotImplementedError('Must be implemented in subclass')
 
     def documents(self):
         """
-        must be implemented by subclass, and return dictionary as follows;
+        must return an iterable yielding dictionaries as follows;
         {
             "identifier": str,
             "content": str,
             "metadata": dict
         }
+
+        must be implemented by subclass
         """
         raise NotImplementedError('Must be implemented in subclass')
