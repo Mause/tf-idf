@@ -1,7 +1,4 @@
 import time
-import logging
-logging.info = print
-logging.debug = print
 
 from .core import TFIDF
 from .ext.source import DirectorySource
@@ -12,26 +9,25 @@ from .ext.sink import JSON_Sink, DatabaseSink
 
 def setup(settings):
     if settings['index_type'] == 'db':
-        settings['sink'] = DatabaseSink(settings['database_filename'])
+        sink = DatabaseSink(settings['database_filename'])
     elif settings['index_type'] == 'json':
-        settings['sink'] = JSON_Sink(settings['index_filename'])
+        sink = JSON_Sink(settings['index_filename'])
 
-    if settings['directory']:
-        settings['source'] = DirectorySource(settings['directory'])
+    source = DirectorySource(settings['directory']) if settings['directory'] else None
 
-    engine = TFIDF(**settings)
+    engine = TFIDF(sink=sink, source=source, **settings)
 
     if settings['directory'] is not None:
         engine.build_index()
-        logging.info('Index built. Saving index')
+        print('Index built. Saving index')
         t = time.time()
         engine.save_index()
-        logging.info('Saved. Took {} seconds.'.format(time.time() - t))
+        print('Saved. Took {} seconds.'.format(time.time() - t))
     else:
-        logging.info('Loading index')
+        print('Loading index')
         t = time.time()
         engine.load_index()
-        logging.info('Index loaded, took {} seconds. {} words in index'.format(
+        print('Index loaded, took {} seconds. {} words in index'.format(
             time.time() - t,
             len(engine.index)))
 

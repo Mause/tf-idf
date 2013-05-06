@@ -1,6 +1,8 @@
 import os
 import logging
 
+__all__ = ['Source', 'DirectorySource']
+
 _types = ['directory']
 
 

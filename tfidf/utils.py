@@ -1,5 +1,7 @@
 import re
 
+__all__ = ['tokenize']
+
 TOKEN_RE = re.compile(r"[\w'`]+", flags=re.UNICODE)
 
 

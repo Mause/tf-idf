@@ -15,6 +15,8 @@ from itertools import chain
 
 from .utils import tokenize
 
+__all__ = ['Document', 'TFIDF']
+
 with open(os.path.join(os.path.dirname(__file__), 'stopwords.json')) as fh:
     stopwords = set(json.load(fh))
 
@@ -46,12 +48,13 @@ class TFIDF(object):
     def __init__(
             self, index=None, index_metadata=None, sink=None,
             source=None, enforce_correct=False, **kwargs):
-        # these can't be assigned in a __init__ method, cause it would overwrite the one MixinSettings
+
         self.index_loaded = True if index else False
         self.index = index or defaultdict(dict)
         self.index_metadata = index_metadata or {}
         self.enforce_correct = enforce_correct
 
+        assert sink or source, 'Either a Sink or a Source must be provided'
         if sink:
             self.sink = sink() if type(sink) == type else sink
 

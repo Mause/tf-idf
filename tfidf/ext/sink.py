@@ -4,6 +4,8 @@ import sqlite3
 
 from collections import defaultdict
 
+__all__ = ['Sink', 'JSON_Sink', 'DatabaseSink']
+
 _types = ['db', 'json']
 
 
@@ -108,7 +110,7 @@ class DatabaseSink(Sink):
 
     def create_table(self, if_exists=False):
         if if_exists:
-            self.conn.execute('DROP TABLE IF EXISTS SearchIndex')
+            self.conn.execute('DROP TABLE IF EXISTS SearchIndex;')
 
         # ridiculous ugly, but w/e
         self.conn.execute(
