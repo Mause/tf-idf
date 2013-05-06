@@ -12,11 +12,12 @@ from .ext.sink import JSON_Sink, DatabaseSink
 
 def setup(settings):
     if settings['index_type'] == 'db':
-        settings['sink'] = DatabaseSink
+        settings['sink'] = DatabaseSink(settings['database_filename'])
     elif settings['index_type'] == 'json':
-        settings['sink'] = JSON_Sink
+        settings['sink'] = JSON_Sink(settings['index_filename'])
 
-    settings['source'] = DirectorySource
+    if settings['directory']:
+        settings['source'] = DirectorySource(settings['directory'])
 
     engine = TFIDF(**settings)
 
@@ -33,9 +34,6 @@ def setup(settings):
         logging.info('Index loaded, took {} seconds. {} words in index'.format(
             time.time() - t,
             len(engine.index)))
-
-    if hasattr(engine, 'index_size') and engine.index_size:
-        logging.info('Size of index on disk is {:.2f}MB'.format(engine.index_size))
 
     assert engine.index_loaded, 'Subclass for sink has an implementation error'
 
@@ -82,6 +80,8 @@ def main():
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-d', '--directory', help='Directory to index. If not provided, uses prebuilt index', required=False)
     parser.add_argument('index_type', help='Method use to store index', choices=sink_types)
+    parser.add_argument('-k', '--keywords', action='store_true', default=False)
+
     args = vars(parser.parse_args())
 
     args.update({
@@ -90,8 +90,10 @@ def main():
     })
 
     engine = setup(args)
-    # do_keyword(engine)
-    do_search(engine)
+    if args['keywords']:
+        do_keyword(engine)
+    else:
+        do_search(engine)
 
 
 if __name__ == '__main__':

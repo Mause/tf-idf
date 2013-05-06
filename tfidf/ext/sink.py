@@ -2,21 +2,13 @@ import os
 import json
 import sqlite3
 
-from . import MixinSettings
-
 from collections import defaultdict
 
 _types = ['db', 'json']
 
 
-def filesize(filename):
-    bytes = os.stat(filename).st_size
-    kilobytes = bytes / 1024
-    megabytes = kilobytes / 1024
-    return megabytes
-
-
-class Sink(MixinSettings):
+class Sink(object):
+    "simple template for Sink object"
     def load_index(self):
         raise NotImplementedError()
 
@@ -25,33 +17,31 @@ class Sink(MixinSettings):
 
 
 class JSON_Sink(Sink):
+    def __init__(self, index_filename):
+        self.index_filename = index_filename
+
     def load_index(self):
-        self.assert_has_arg('index_filename')
-        index_filename = os.path.abspath(self.settings['index_filename'])
+        index_filename = os.path.abspath(self.index_filename)
 
         if os.path.exists(index_filename):
-            self.tfidf_object.index_size = filesize(index_filename)
 
             # read in the index, if it is cached
             with open(index_filename) as fh:
                 data = json.load(fh)
 
-            self.tfidf_object.index = data['index']
-            self.tfidf_object.index_metadata = data['metadata']
+            index = data['index']
+            metadata = data['metadata']
         else:
             # if the index does not yet exist
-            self.tfidf_object.index = {}
-        self.tfidf_object.index_loaded = True
+            index, metadata = {}, {}
+        return index, metadata
 
-    def save_index(self, tfidf_object):
-        assert tfidf_object.index_loaded
-        self.assert_has_arg('index_filename')
-
+    def save_index(self, index, metadata):
         data = {
-            "index": tfidf_object.index,
-            "metadata": tfidf_object.mould_metadata()
+            "index": index,
+            "metadata": metadata
         }
-        with open(self.settings['index_filename'], 'w') as fh:
+        with open(self.index_filename, 'w') as fh:
             json.dump(data, fh, indent=4)
 
 
@@ -106,14 +96,11 @@ class SearchIndex(object):
 
 
 class DatabaseSink(Sink):
-    def _setup_sqlite(self):
-        self.assert_has_arg('database_filename')
-        database_filename = os.path.abspath(self.settings['database_filename'])
+    def __init__(self, database_filename):
+        database_filename = os.path.abspath(database_filename)
 
         self.conn = sqlite3.connect(database_filename)
         self.create_table(if_exists=False)
-
-        self.tfidf_object.index_size = filesize(database_filename)
 
     def __del__(self):
         if hasattr(self, 'conn'):
@@ -136,12 +123,13 @@ class DatabaseSink(Sink):
         cursor = self.conn.cursor()
         # read in the index, if it is cached
         index_models = SearchIndex.all(cursor)
+        index = defaultdict(dict)
 
         # reformat index models into usuable format
         for model in index_models:
-            self.tfidf_object.index[model.identifier] = model.index
+            index[model.identifier] = model.index
 
-        self.tfidf_object.index_loaded = True
+        return index
 
     def save_index(self):
         assert self.tfidf_object.index_loaded

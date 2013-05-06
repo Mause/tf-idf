@@ -52,15 +52,11 @@ class TFIDF(object):
         self.index_metadata = index_metadata or {}
         self.enforce_correct = enforce_correct
 
-        # assert sink or source, 'either a sink or a source must be provided'
         if sink:
-            # TODO: work out how to determine if a class has been instantiated
-            # assert type(sink) != type
-            self.sink = sink(self, **kwargs) if type(sink) == type else sink
+            self.sink = sink() if type(sink) == type else sink
 
         if source:
-            # assert type(sink) != type
-            self.source = source(self, **kwargs) if type(source) == type else source
+            self.source = source() if type(source) == type else source
 
     def term_freq(self, word, document, all_documents):
         "calculates the term frequency for a word"
@@ -245,8 +241,9 @@ class TFIDF(object):
         """
 
         tokens = tokenize(string)
-        word_scores = self.word_scores_from_index()
+        tokens = self.filter_out_stopwords(tokens)
 
+        word_scores = self.word_scores_from_index()
         scores = {
             word: word_scores[word] if word in word_scores else 0
             for word in tokens
@@ -269,7 +266,8 @@ class TFIDF(object):
         assert hasattr(self, 'sink'), 'No sink has been provided'
 
         if self.sink:
-            self.sink.load_index()
+            self.index, self.index_metadata = self.sink.load_index()
+            self.index_loaded = True
 
     def save_index(self):
         """
@@ -278,7 +276,7 @@ class TFIDF(object):
         assert hasattr(self, 'sink'), 'No sink has been provided'
 
         if self.sink:
-            self.sink.save_index()
+            self.sink.save_index(self.index, self.index_metadata)
 
     def documents(self, num=None):
         """
