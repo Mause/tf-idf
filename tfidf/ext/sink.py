@@ -129,7 +129,7 @@ class DatabaseSink(Sink):
         for model in index_models:
             index[model.identifier] = model.index
 
-        return index
+        return index, {}
 
     def save_index(self):
         assert self.tfidf_object.index_loaded

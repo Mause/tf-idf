@@ -3,7 +3,7 @@ tf-idf
 
 Simple TF-IDF implementation
 
-Based on a simple mixin ideology, so that you can mix in different inputs and outputs, otherwise known as Source and Sink
+Based on a swapin ideology, so that you can swap in and out different inputs and outputs, otherwise known as Sources and Sinks.
 
 Sinks;
  * `DatabaseSink`
