@@ -1,4 +1,10 @@
 import time
+import logging
+logging.basicConfig(
+    filename='tfidf.log',
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s:%(levelname)s - %(filename)s:%(funcName)s:%(lineno)s - %(message)s'
+)
 
 from .core import TFIDF
 from .ext.source import DirectorySource
