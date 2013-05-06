@@ -28,7 +28,8 @@ class Document(object):
         self.identifier = identifier
 
         self.tokens, _ = tokenize(content)
-        self.raw_tokens = list(filter(lambda x: x not in stopwords, self.tokens))
+        self.raw_tokens = list(
+            filter(lambda x: x not in stopwords, self.tokens))
 
         self.freq_map = Counter(self.raw_tokens)
         self.freq_map_max = max(self.freq_map.values())
@@ -63,8 +64,8 @@ class TFIDF(object):
 
     def term_freq(self, word, document, all_documents):
         "calculates the term frequency for a word"
-        # the word with the most occurrences in the document does not depend on the current word;
-        # so, we store it as a constant on the Document :D
+        # the word with the most occurrences in the document does not depend on
+        # the current word; so, we store it as a constant on the Document :D
         maximum_occurances = document.freq_map_max
 
         if self.enforce_correct:
@@ -72,12 +73,13 @@ class TFIDF(object):
 
         return document.freq_map[word] / float(maximum_occurances)
 
-    def inverse_document_freq(self, word, all_documents, len_all_document, idf_ref):
+    def inverse_document_freq(self, word, all_documents,
+                              len_all_document, idf_ref):
         "calculates idf for given word with given document stats"
         instances_in_all = idf_ref[word]
 
-        # as stated on Wikipedia, if the document does not exist in any documents,
-        # instances_in_all will be zero, causing a ZeroDivisionError.
+        # as stated on Wikipedia, if the document does not exist in any
+        # documents, instances_in_all will be zero, causing a ZeroDivisionError.
         # 1 is hence added to ensure this does not occur
         if self.enforce_correct:
             instances_in_all += 1
@@ -90,7 +92,8 @@ class TFIDF(object):
         returning a list of Document instances
         """
         start = time.time()
-        logging.debug('Reading and tokenizing the documents started at {}'.format(start))
+        logging.debug(
+            'Reading and tokenizing the documents started at {}'.format(start))
 
         # load in the documents
         all_documents = []
@@ -111,7 +114,8 @@ class TFIDF(object):
         returns a collections.Counter() instance
         recording how many documents contain a given term
         """
-        tokens = chain.from_iterable(document.tokens for document in all_documents)
+        tokens = chain.from_iterable(
+            document.tokens for document in all_documents)
         return Counter(tokens)
 
     def build_index(self, num=None):
@@ -126,7 +130,8 @@ class TFIDF(object):
         idf_ref = self.build_idf_reference(all_documents)
 
         start = time.time()
-        logging.debug('Computing the word relevancy values started at {}'.format(start))
+        logging.debug(
+            'Computing the word relevancy values started at {}'.format(start))
 
         # compute the index
         i_d_f_cache = {}
@@ -138,7 +143,8 @@ class TFIDF(object):
                         len_all_document, idf_ref)
 
                 self.index[word][document.identifier] = (
-                    self.term_freq(word, document, all_documents) * i_d_f_cache[word]
+                    self.term_freq(word, document, all_documents) *
+                    i_d_f_cache[word]
                 )
 
         logging.debug('Ended after {} seconds'.format(time.time() - start))
@@ -158,17 +164,10 @@ class TFIDF(object):
 
         returns a collections.OrderedDict() sorted by score
         """
-        if not self.index_loaded:
-            self.build_index()
 
-        logging.debug('Docs; {}'.format(len(self.index)))
-
-        words = [x.lower() for x in query.split()]
-
-        words = self.filter_out_stopwords(words)
-
-        # this implementation does not place emphasis on words
-        # that appear more than once in the query string
+        # lower, filter out stopwords, and chuck in a set
+        words = self.filter_out_stopwords(
+            x.lower() for x in query.split())
         words = set(words)
 
         logging.debug('Querying with; {}'.format(words))
@@ -235,12 +234,17 @@ class TFIDF(object):
         return self.index_metadata
 
     def filter_out_stopwords(self, words: list):
-        "returns a filter instance configured to generate words, minus the stopwords"
+        """
+        returns a filter instance configured to generate words,
+        minus the stopwords
+        """
         return filter(lambda word: word not in stopwords, words)
 
     def determine_keywords(self, string: str):
         """
-        lower scores are sorta better; less common in the index, hence presumed to be more informative
+        lower scores are sorta better;
+        less common in the index, hence presumed to be more informative.
+        theoretically.
         """
 
         tokens = tokenize(string)
